@@ -34,6 +34,8 @@ static void clear_screen(uint32_t color)
     }
 }
 
+#define FONT_SCALE 2
+
 /**
  * @brief Draws a single character using the embedded 8x8 font.
  */
@@ -49,20 +51,24 @@ static void draw_char(uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg)
         {
             if (bits & (1 << (7 - col)))
             {
-                put_pixel(x + col, y + row, fg);
+                for (uint32_t dy = 0; dy < FONT_SCALE; dy++)
+                    for (uint32_t dx = 0; dx < FONT_SCALE; dx++)
+                        put_pixel(x + (col * FONT_SCALE) + dx, y + (row * FONT_SCALE) + dy, fg);
             }
             else if (bg != 0)
             {
-                put_pixel(x + col, y + row, bg);
+                for (uint32_t dy = 0; dy < FONT_SCALE; dy++)
+                    for (uint32_t dx = 0; dx < FONT_SCALE; dx++)
+                        put_pixel(x + (col * FONT_SCALE) + dx, y + (row * FONT_SCALE) + dy, bg);
             }
         }
     }
 }
 
 /**
- * @brief Prints a null-terminated string at (x, y).
+ * @brief Prints a null-terminated string at (x, y). Returns the new X coordinate.
  */
-static void print_string(uint32_t x, uint32_t y, const char *str, uint32_t fg, uint32_t bg)
+static uint32_t print_string(uint32_t x, uint32_t y, const char *str, uint32_t fg, uint32_t bg)
 {
     uint32_t cur_x = x;
     uint32_t cur_y = y;
@@ -72,15 +78,16 @@ static void print_string(uint32_t x, uint32_t y, const char *str, uint32_t fg, u
         if (*str == '\n')
         {
             cur_x = x;
-            cur_y += 12;
+            cur_y += 12 * FONT_SCALE;
         }
         else
         {
             draw_char(cur_x, cur_y, *str, fg, bg);
-            cur_x += 8;
+            cur_x += 8 * FONT_SCALE;
         }
         str++;
     }
+    return cur_x;
 }
 
 /**
@@ -148,29 +155,29 @@ void kernel_main(NthBootInfo *boot_info)
         clear_screen(0x00121820);
 
         /* Top header banner (0x001E293B) */
-        draw_rect(0, 0, fb->Width, 48, 0x001E293B);
-        draw_rect(0, 48, fb->Width, 2, 0x0038BDF8); // Cyan accent bar
+        draw_rect(0, 0, fb->Width, 48 * FONT_SCALE, 0x001E293B);
+        draw_rect(0, 48 * FONT_SCALE, fb->Width, 2 * FONT_SCALE, 0x0038BDF8); // Cyan accent bar
 
-        print_string(24, 18, "nth Boot Protocol - C Kernel Template", 0x0038BDF8, 0);
+        print_string(24 * FONT_SCALE, 18 * FONT_SCALE, "nth Boot Protocol - C Kernel Template", 0x0038BDF8, 0);
 
         /* Card background */
-        draw_rect(24, 70, 680, 320, 0x001E293B);
+        draw_rect(24 * FONT_SCALE, 70 * FONT_SCALE, 680 * FONT_SCALE, 320 * FONT_SCALE, 0x001E293B);
 
-        print_string(44, 90, "System Initialization Report:", 0x00F1F5F9, 0);
+        print_string(44 * FONT_SCALE, 90 * FONT_SCALE, "System Initialization Report:", 0x00F1F5F9, 0);
 
         /* Display Resolution */
         char buf[64];
-        print_string(44, 120, "Framebuffer: ", 0x0094A3B8, 0);
+        uint32_t px = print_string(44 * FONT_SCALE, 120 * FONT_SCALE, "Framebuffer: ", 0x0094A3B8, 0);
         utoa(fb->Width, buf, 10);
-        print_string(148, 120, buf, 0x00F8FAFC, 0);
-        print_string(148 + 8 * 4, 120, "x", 0x0094A3B8, 0);
+        px = print_string(px, 120 * FONT_SCALE, buf, 0x00F8FAFC, 0);
+        px = print_string(px, 120 * FONT_SCALE, " x ", 0x0094A3B8, 0);
         utoa(fb->Height, buf, 10);
-        print_string(148 + 8 * 6, 120, buf, 0x00F8FAFC, 0);
+        print_string(px, 120 * FONT_SCALE, buf, 0x00F8FAFC, 0);
 
-        print_string(44, 140, "Scanline:    ", 0x0094A3B8, 0);
+        px = print_string(44 * FONT_SCALE, 140 * FONT_SCALE, "Scanline:    ", 0x0094A3B8, 0);
         utoa(fb->PixelsPerScanLine, buf, 10);
-        print_string(148, 140, buf, 0x00F8FAFC, 0);
-        print_string(148 + 8 * 5, 140, "pixels", 0x0094A3B8, 0);
+        px = print_string(px, 140 * FONT_SCALE, buf, 0x00F8FAFC, 0);
+        print_string(px, 140 * FONT_SCALE, " pixels", 0x0094A3B8, 0);
 
         /* Parse UEFI Memory Map */
         uint64_t total_usable_bytes = 0;
@@ -192,31 +199,31 @@ void kernel_main(NthBootInfo *boot_info)
             }
         }
 
-        print_string(44, 170, "Memory Map:  ", 0x0094A3B8, 0);
+        px = print_string(44 * FONT_SCALE, 170 * FONT_SCALE, "Memory Map:  ", 0x0094A3B8, 0);
         utoa(total_descriptors, buf, 10);
-        print_string(148, 170, buf, 0x00F8FAFC, 0);
-        print_string(148 + 8 * 5, 170, "descriptors parsed", 0x0094A3B8, 0);
+        px = print_string(px, 170 * FONT_SCALE, buf, 0x00F8FAFC, 0);
+        print_string(px, 170 * FONT_SCALE, " descriptors", 0x0094A3B8, 0);
 
-        print_string(44, 190, "Usable RAM:  ", 0x0094A3B8, 0);
+        px = print_string(44 * FONT_SCALE, 190 * FONT_SCALE, "Usable RAM:  ", 0x0094A3B8, 0);
         utoa(total_usable_bytes / (1024 * 1024), buf, 10);
-        print_string(148, 190, buf, 0x0034D399, 0); // Green accent
-        print_string(148 + 8 * 6, 190, "MiB", 0x0094A3B8, 0);
+        px = print_string(px, 190 * FONT_SCALE, buf, 0x0034D399, 0); // Green accent
+        print_string(px, 190 * FONT_SCALE, " MiB", 0x0094A3B8, 0);
 
         /* ACPI RSDP Pointer */
-        print_string(44, 220, "ACPI RSDP:   0x", 0x0094A3B8, 0);
+        px = print_string(44 * FONT_SCALE, 220 * FONT_SCALE, "ACPI RSDP:   0x", 0x0094A3B8, 0);
         if (boot_info->Rsdp)
         {
             utoa((uint64_t)boot_info->Rsdp, buf, 16);
-            print_string(164, 220, buf, 0x00F8FAFC, 0);
+            print_string(px, 220 * FONT_SCALE, buf, 0x00F8FAFC, 0);
         }
         else
         {
-            print_string(164, 220, "Not Found", 0x00EF4444, 0);
+            print_string(px, 220 * FONT_SCALE, "Not Found", 0x00EF4444, 0);
         }
 
         /* Status message */
-        print_string(44, 260, "Status: Kernel booted successfully via nth protocol!", 0x0038BDF8, 0);
-        print_string(44, 280, "Ready for kernel development. CPU halted.", 0x0064748B, 0);
+        print_string(44 * FONT_SCALE, 260 * FONT_SCALE, "Status: Kernel booted successfully via nth protocol!", 0x0038BDF8, 0);
+        print_string(44 * FONT_SCALE, 280 * FONT_SCALE, "Ready for kernel development. CPU halted.", 0x0064748B, 0);
     }
 
     /* Infinite halt loop */
