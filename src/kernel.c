@@ -47,7 +47,7 @@ static void draw_char(uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg)
         uint8_t bits = glyph[row];
         for (int col = 0; col < 8; col++)
         {
-            if (bits & (1 << col))
+            if (bits & (1 << (7 - col)))
             {
                 put_pixel(x + col, y + row, fg);
             }
