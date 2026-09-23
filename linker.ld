@@ -4,7 +4,7 @@ OUTPUT_ARCH(i386:x86-64)
 
 SECTIONS
 {
-    . = 0x100000;
+    . = 0xFFFFFFFF80100000;
 
     .text : ALIGN(4K) {
         *(.text .text.*)

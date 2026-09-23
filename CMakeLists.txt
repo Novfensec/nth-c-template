@@ -24,6 +24,7 @@ target_compile_options(kernel.elf PRIVATE
     -no-pie
     -m64
     -march=x86-64
+    -mcmodel=kernel
     -mno-red-zone
     -mno-mmx
     -mno-sse
